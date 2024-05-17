@@ -9,15 +9,24 @@ import org.springframework.validation.Validator;
 @RequiredArgsConstructor
 public class SignUpFormValidator implements Validator {
 
-    private AccountRepository accountRepository;
+    private final AccountRepository accountRepository;
 
     @Override
-    public boolean supports(Class<?> aclazz) {
-        return aclazz.isAssignableFrom(SignUpForm.class);
+    public boolean supports(Class<?> aClazz) {
+        return aClazz.isAssignableFrom(SignUpForm.class);
     }
 
+    //이메일과 닉네임이 중복되는지 확인하는 메서드.
     @Override
-    public void validate(Object o, Errors errors) {
+    public void validate(Object object, Errors errors) {
+        SignUpForm signUpForm = (SignUpForm) object;
+        if(accountRepository.existsByEmail(signUpForm.getEmail())){
+            errors.rejectValue("email", "invalid.email", new Object[]{signUpForm.getEmail()}, "이미 사용중인 이메일입니다.");
+        }
 
+        if (accountRepository.existsByNickname(signUpForm.getNickname())){
+            errors.rejectValue("nickname", "invalid.nickname", new Object[]{signUpForm.getEmail()},"이미 사용중인 닉네임입니다.");
+        }
     }
+
 }
