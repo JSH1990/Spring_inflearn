@@ -16,6 +16,11 @@ public class SignUpFormValidator implements Validator {
         return aClazz.isAssignableFrom(SignUpForm.class);
     }
 
+    /** validate
+     목적 : 중복 확인.
+     설명 : 이메일과 닉네임이 중복되는지 확인
+     비고 :
+     **/
     //이메일과 닉네임이 중복되는지 확인하는 메서드.
     @Override
     public void validate(Object object, Errors errors) {

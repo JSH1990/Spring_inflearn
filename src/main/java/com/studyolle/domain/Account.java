@@ -13,13 +13,13 @@ public class Account {
 
     @Id
     @GeneratedValue
-    private Long id; //primary key를 id로 설정
+    private Long id;
 
-    @Column(unique = true) //email과 nickname으로 로그인할수 있도록 해야하기때문에 unique 설정.
+    @Column(unique = true)
     private String email;
 
     @Column(unique = true)
-    private String nickname; //DB에서는 기본값으로 varchar(255)로 저장됨
+    private String nickname;
 
     private String password;
 
@@ -40,7 +40,7 @@ public class Account {
     private String locationl;
     
     @Lob
-    @Basic(fetch = FetchType.EAGER) //이미지는 문자열이 더 크기때문에 @Lob 설정
+    @Basic(fetch = FetchType.EAGER)
     private String profileImage;
 
     private boolean studyCreatedByEmail;

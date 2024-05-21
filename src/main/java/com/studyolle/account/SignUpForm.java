@@ -7,6 +7,11 @@ import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Pattern;
 
+/** SignUpForm
+ 목적 : 유효성 검사
+ 설명 : 회원정보 가입할때 정보 유효성 검사
+ 비고 :
+ **/
 @Data
 public class SignUpForm {
 
