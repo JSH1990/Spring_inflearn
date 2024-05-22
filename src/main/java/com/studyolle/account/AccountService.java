@@ -1,6 +1,7 @@
 package com.studyolle.account;
 
 import com.studyolle.domain.Account;
+import com.studyolle.settings.Profile;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
@@ -26,7 +27,9 @@ processNewAccount메서드는 가입이 된 회원의 이메일 토큰을 생성
 그래서 @Transactional붙여 즉시 반영할수있게 애너테이션을 붙인것이다.
  */
 
+/** AccountService 사용자 서비스 **/
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class AccountService implements UserDetailsService {
     //컨트롤러의 코드를 서비스에 넣고, 다시 한번 테스트 돌려 잘되는지 확인해야한다.
@@ -84,6 +87,7 @@ public class AccountService implements UserDetailsService {
      설명 : 회원저장소에서 id,닉네임가 null이면 예외처리하고, 있으면 UserAccount반환
      비고 : UserDetailsService implements 할때 오버라이드 되는 메서드
      **/
+    @Transactional(readOnly = true) //성능에 유리하므로 사용
     @Override
     public UserDetails loadUserByUsername(String emailOrNickname) throws UsernameNotFoundException {
         Account account = accountRepository.findByEmail(emailOrNickname);
@@ -109,5 +113,29 @@ public class AccountService implements UserDetailsService {
                 account.getPassword(),
                 List.of(new SimpleGrantedAuthority("ROLE_USER"))); //계정이 가지고있는 권한
         SecurityContextHolder.getContext().setAuthentication(token);
+    }
+
+    public void completeSignUp(Account account) {
+        account.completeSignUp();
+        login(account);
+    }
+
+    public void updateProfile(Account account, Profile profile) {
+        account.setUrl(profile.getUrl());
+        account.setOccupation(profile.getOccupation());
+        account.setLocation(profile.getLocation());
+        account.setBio(profile.getBio());
+
+        /*
+        이슈
+        Q. accountRepository.save(account); 작성하지않으면, 프로필 설정은 update 되지않는다.
+
+        A. 위의 completeSignUp(Account account) 와 updateProfile(Account account)의 account 객체는 서로 다른 객체이다.
+           위의 account객체는 이미 영속성 context에 들어가 있는 객체이고,
+           아래 account객체는 세션에 담겨있던 account 객체이다.
+           그래서 detached상태의 객체이며(detached 상태의 객체는 한때 영속성 context에 의해 관리되었지만 더이상 관리되지않는 상태)
+           다시 merge해서 영속성 컨텍스트에 병합시키기위해선, JPA에서 repository.save 메소드를 호출하면, 내부적으로 merge가 수행되어, 'detached' 상태의 객체가 영속성 컨텍스트에 병합된다.
+         */
+        accountRepository.save(account);
     }
 }

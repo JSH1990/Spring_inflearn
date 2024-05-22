@@ -16,11 +16,7 @@ import java.io.InputStream;
 @Component
 @Slf4j
 
-/** ConsoleMailSender
- 목적 : 스프링 메일
- 설명 : 메일 커스텀 설정
- 비고 :
- **/
+/** ConsoleMailSender Mail 설정 **/
 public class ConsoleMailSender implements JavaMailSender {
     @Override
     public MimeMessage createMimeMessage() {

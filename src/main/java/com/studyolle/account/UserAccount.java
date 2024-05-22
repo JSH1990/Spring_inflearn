@@ -7,6 +7,7 @@ import org.springframework.security.core.userdetails.User;
 
 import java.util.List;
 
+/** UserAccount 사용자 인터페이스 **/
 @Getter
 public class UserAccount extends User {
 

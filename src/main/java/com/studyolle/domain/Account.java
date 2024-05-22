@@ -6,6 +6,7 @@ import javax.persistence.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/** Account 사용자 **/
 @Entity
 @Getter @Setter @EqualsAndHashCode(of="id")
 @Builder @AllArgsConstructor @NoArgsConstructor

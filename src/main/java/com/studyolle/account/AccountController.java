@@ -8,10 +8,12 @@ import org.springframework.validation.Errors;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 
 import javax.validation.Valid;
 
+/** AccountController 사용자 컨트롤러 **/
 @Controller
 @RequiredArgsConstructor
 public class AccountController {
@@ -79,22 +81,45 @@ public class AccountController {
             return view;
         }
 
-        account.completeSignUp(); //이메일의 토큰이 맞는지 확인하면 자동으로 로그인
-        accountService.login(account);
+
+        /*
+        Q. 아래 코드에서는 사용자프로필의 가입날짜가 표기되지않는다.
+        A. 트랜잭션 범위 밖에서 일어난 일이기 때문이다.
+           위의 accountRepository.findByEmail(email)에서의 내용까지만 트랜잭션되었고,
+           이후의 accountService.completeSignUp(account); 여기는 트랜잭션되지않았기때문에 Service레이어안으로 넣고, @Transationl붙인다.
+
+           1. 데이터 변경은 서비스 계층으로 위임해서 트랜잭션안에서 처리한다.
+           2. 데이터 조회는 리파지토리 또는 서비스를 사용한다.
+         */
+//        accountService.completeSignUp(account);
+//        account.completeSignUp(); //이메일의 토큰이 맞는지 확인하면 자동으로 로그인
+//        accountService.login(account);
+
+        accountService.completeSignUp(account);
         model.addAttribute("numberOfUser", accountRepository.count());
         model.addAttribute("nickname", account.getNickname());
         return view;
     }
 
+    /** checkEmail
+     목적 : 이메일 체크 화면
+     설명 : 회원가입 후, "스터디올레 가입을 완료하려면 계정 인증 이메일을 확인하세요." 클릭하면 나오는 화면
+     비고 : 현재 입력한 email를 담아 뷰로 보낸다.
+     **/
     @GetMapping("/check-email")
     public String checkEmail(@CurrentUser Account account, Model model) {
-        model.addAttribute("email", account.getEmail());
+        model.addAttribute("email", account.getEmail()); //회원가입시 입력했던 정보들을 model 객체에 담는다.
         return "account/check-email";
     }
 
+    /** resendConfirmEmail
+     목적 : 이메일 체크 재전송
+     설명 : 인증 이메일이 1시간 이내이면 재전송 불가
+     비고 : 
+     **/
     @GetMapping("/resend-confirm-email")
     public String resendConfirmEmail(@CurrentUser Account account, Model model) {
-        if (!account.canSendConfirmEmail()) {
+        if (!account.canSendConfirmEmail()) { //보낸 이메일이 1시간이 경과되지 않다면, error 메세지
             model.addAttribute("error", "인증 이메일은 1시간에 한번만 전송할 수 있습니다.");
             model.addAttribute("email", account.getEmail());
             return "account/check-email";
@@ -102,6 +127,23 @@ public class AccountController {
 
         accountService.sendSignUpConfirmEmail(account);
         return "redirect:/";
+    }
+
+    /** viewProfile
+     목적 : 프로필 관리
+     설명 : 닉네임 조회를 통해, 프로필 사용자가 맞는지 체크
+     비고 : 
+     **/
+    @GetMapping("/profile/{nickname}")
+    public String viewProfile(@PathVariable String nickname, Model model, @CurrentUser Account account) {
+        Account byNickname = accountRepository.findByNickname(nickname);
+        if(nickname == null){
+            throw new IllegalArgumentException(nickname + "에 해당하는 사용자가 없습니다."); //예외를 던짐
+        }
+
+        model.addAttribute(byNickname); //model.addAttribute("account",byNickname);
+        model.addAttribute("isOwner", byNickname.equals(account)); //계정의 주인이 맞는지 확인.
+        return "account/profile";
     }
 
 }

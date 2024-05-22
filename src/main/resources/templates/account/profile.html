@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments.html :: head"></head>
+<body class="bg-light">
+<div th:replace="fragments.html :: main-nav"></div>
+<div class="container">
+
+    <!--정보가 없는 프로필 뷰 -->
+    <div class="row mt-5 justify-content-center">
+        <div class="col-2"> <!-- grid는 좌우 총 col-12로 양측에 1씩 공간을 두고 col-10으로 공간을 나눈다. ex) col-2는 2만큼 차지 -->
+            <!-- Avatar -->
+            <!-- account.profileImage가 비어 있으면 jdenticon 보여준다. -->
+            <!-- "img-fluid float-left rounded img-thumbnail" 프로필 네모 이미지 -->
+            <svg th:if="${#strings.isEmpty(account.profileImage)}" class="img-fluid float-left rounded img-thumbnail"
+                 th:data-jdenticon-value="${account.nickname}" width="125" height="125"></svg>
+
+            <!-- account.profileImage가 안비어 있으면 account.profileImage 보여준다. -->
+            <img th:if="${!#strings.isEmpty(account.profileImage)}" class="img-fluid float-left rounded img-thumbnail"
+                 th:src="${account.profileImage}"
+                 width="125" height="125"/>
+        </div>
+
+        <!-- col-8 만큼 해당하는곳은 계정정보 보여준다. -->
+        <div class="col-8">
+            <h1 class="display-4 " th:text="${account.nickname}">Whiteship</h1>
+            <p class="lead" th:if="${!#strings.isEmpty(account.bio)}" th:text="${account.bio}">bio</p>
+            <p class="lead" th:if="${#strings.isEmpty(account.bio) && isOwner}"> <!-- bio가 없고 isOwner인 경우 -->
+                한 줄 소개를 추가하세요.
+            </p>
+        </div>
+    </div>
+
+    <!-- 정보가 있는 프로필 뷰 -->
+    <div class="row mt-3 justify-content-center">
+        <div class="col-2">
+            <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                <!-- 클릭하는 것에 따라 소개와 스터디의 내용이 바뀐다. -->
+
+                <!-- 소개 aria-controls="v-pills-profile"-->
+                <a class="nav-link active" id="v-pills-intro-tab" data-toggle="pill" href="#v-pills-profile"
+                   role="tab" aria-controls="v-pills-profile" aria-selected="true">소개</a>
+                <!-- 스터디 aria-controls="v-pills-study"-->
+                <a class="nav-link" id="v-pills-study-tab" data-toggle="pill" href="#v-pills-study"
+                   role="tab" aria-controls="v-pills-study" aria-selected="false">스터디</a>
+            </div>
+        </div>
+        <div class="col-8">
+            <div class="tab-content" id="v-pills-tabContent">
+                <div class="tab-pane fade show active" id="v-pills-profile" role="tabpanel" aria-labelledby="v-pills-home-tab">
+                    <!-- url -->
+                    <p th:if="${!#strings.isEmpty(account.url)}">
+                            <span style="font-size: 20px;">
+                                <i class="fa fa-link col-1"></i>
+                            </span>
+                        <span th:text="${account.url}" class="col-11"></span>
+                    </p>
+
+                    <!-- 직업 -->
+                    <p th:if="${!#strings.isEmpty(account.occupation)}">
+                            <span style="font-size: 20px;">
+                                <i class="fa fa-briefcase col-1"></i>
+                            </span>
+                        <span th:text="${account.occupation}" class="col-9"></span>
+                    </p>
+
+                    <!-- 위치 -->
+                    <p th:if="${!#strings.isEmpty(account.location)}">
+                            <span style="font-size: 20px;">
+                                <i class="fa fa-location-arrow col-1"></i>
+                            </span>
+                        <span th:text="${account.location}" class="col-9"></span>
+                    </p>
+                    <p th:if="${isOwner}">
+                            <span style="font-size: 20px;">
+                                <i class="fa fa-envelope-o col-1"></i>
+                            </span>
+                        <span th:text="${account.email}" class="col-9"></span>
+                    </p>
+
+                    <!-- 메일 -->
+                    <p th:if="${isOwner || account.emailVerified}">
+                            <span style="font-size: 20px;">
+                                <i class="fa fa-calendar-o col-1"></i>
+                            </span>
+                        <span th:if="${isOwner && !account.emailVerified}" class="col-9">
+                                <a href="#" th:href="@{'/checkemail?email=' + ${account.email}}">가입을 완료하려면 이메일을 확인하세요.</a>
+                            </span>
+
+                        <!-- 가입일 -->
+                        <span th:text="${#temporals.format(account.joinedAt, 'yyyy년 M월 가입')}" class="col-9"></span>
+                    </p>
+
+                    <div th:if="${isOwner}">
+                        <a class="btn btn-outline-primary" href="#" th:href="@{/settings/profile}">프로필 수정</a>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="v-pills-study" role="tabpanel" aria-labelledby="v-pills-profile-tab">
+                    Study
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
