@@ -8,12 +8,16 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.validation.Valid;
 import java.util.List;
+
 /*
 @Transactional을 붙여야하는 이유
 processNewAccount메서드는 가입이 된 회원의 이메일 토큰을 생성해 가입확인 이메일을 전송하는 메서드이다.
@@ -24,7 +28,7 @@ processNewAccount메서드는 가입이 된 회원의 이메일 토큰을 생성
 
 @Service
 @RequiredArgsConstructor
-public class AccountService {
+public class AccountService implements UserDetailsService {
     //컨트롤러의 코드를 서비스에 넣고, 다시 한번 테스트 돌려 잘되는지 확인해야한다.
 
     private final AccountRepository accountRepository;
@@ -66,13 +70,32 @@ public class AccountService {
      설명 :
      비고 :
      **/
-    private void sendSignUpConfirmEmail(Account newAccount) {
+    public void sendSignUpConfirmEmail(Account newAccount) {
         SimpleMailMessage mailMessage = new SimpleMailMessage();
         mailMessage.setTo(newAccount.getEmail());
         mailMessage.setSubject("스터디올래, 회원 가입 인증"); //메일 제목
         mailMessage.setText("/check-email-token?token=" + newAccount.getEmailCheckToken() +
                 "&email=" + newAccount.getEmail()); //메일 본문
         javaMailSender.send(mailMessage); //메일 전송
+    }
+
+    /** loadUserByUsername
+     목적 : 회원유무검색
+     설명 : 회원저장소에서 id,닉네임가 null이면 예외처리하고, 있으면 UserAccount반환
+     비고 : UserDetailsService implements 할때 오버라이드 되는 메서드
+     **/
+    @Override
+    public UserDetails loadUserByUsername(String emailOrNickname) throws UsernameNotFoundException {
+        Account account = accountRepository.findByEmail(emailOrNickname);
+        if (account == null){
+            account = accountRepository.findByNickname(emailOrNickname);
+        }
+
+        if (account == null){
+            throw new UsernameNotFoundException(emailOrNickname);
+        }
+
+        return new UserAccount(account);
     }
 
     /** login

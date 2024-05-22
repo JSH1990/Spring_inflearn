@@ -31,8 +31,8 @@ public class AccountController {
     }
 
     /** signUpForm
-     목적 : 로그인
-     설명 : 가입할때 정보를 model.addAttribute(new SignUpForm()); 에 담아 반환한다.
+     목적 : 회원가입 페이지
+     설명 : 회원가입 페이지를 뷰로 보여준다.
      비고 :
      **/
     @GetMapping("/sign-up")
@@ -42,7 +42,7 @@ public class AccountController {
     }
 
     /** signUpSubmit
-     목적 : 회원가입
+     목적 : 회원가입 등록
      설명 : 회원가입 할때 signUpForm 객체에 개인정보 담는다.
      비고 : 회원가입 -> 성공시 "/" 실패시 "/로그인화면"
      **/
@@ -84,6 +84,24 @@ public class AccountController {
         model.addAttribute("numberOfUser", accountRepository.count());
         model.addAttribute("nickname", account.getNickname());
         return view;
+    }
+
+    @GetMapping("/check-email")
+    public String checkEmail(@CurrentUser Account account, Model model) {
+        model.addAttribute("email", account.getEmail());
+        return "account/check-email";
+    }
+
+    @GetMapping("/resend-confirm-email")
+    public String resendConfirmEmail(@CurrentUser Account account, Model model) {
+        if (!account.canSendConfirmEmail()) {
+            model.addAttribute("error", "인증 이메일은 1시간에 한번만 전송할 수 있습니다.");
+            model.addAttribute("email", account.getEmail());
+            return "account/check-email";
+        }
+
+        accountService.sendSignUpConfirmEmail(account);
+        return "redirect:/";
     }
 
 }
