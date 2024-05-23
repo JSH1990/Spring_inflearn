@@ -1,9 +1,10 @@
 package com.studyolle.account;
 
 import com.studyolle.domain.Account;
-import com.studyolle.settings.Profile;
+import com.studyolle.settings.form.Notifications;
+import com.studyolle.settings.form.Profile;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.modelmapper.ModelMapper;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -37,6 +38,7 @@ public class AccountService implements UserDetailsService {
     private final AccountRepository accountRepository;
     private final JavaMailSender javaMailSender;
     private final PasswordEncoder passwordEncoder;
+    private final ModelMapper modelMapper;
 
     /** processNewAccount
      목적 : 가입 확인 이메일 전송
@@ -115,16 +117,28 @@ public class AccountService implements UserDetailsService {
         SecurityContextHolder.getContext().setAuthentication(token);
     }
 
+    /** completeSignUp
+     목적 : 이메일 인증완료
+     설명 : 이메일 인증 후 로그인
+     비고 :
+     **/
     public void completeSignUp(Account account) {
         account.completeSignUp();
         login(account);
     }
 
+    /** updateProfile
+     목적 : 프로필 수정
+     설명 : 프로필 수정 후 accountRepository.save(account)로 영속성 context로 관리
+     비고 :
+     **/
     public void updateProfile(Account account, Profile profile) {
-        account.setUrl(profile.getUrl());
-        account.setOccupation(profile.getOccupation());
-        account.setLocation(profile.getLocation());
-        account.setBio(profile.getBio());
+        modelMapper.map(profile, account); //profile의 값들이 account로 들어간다.
+//        account.setUrl(profile.getUrl());
+//        account.setOccupation(profile.getOccupation());
+//        account.setLocation(profile.getLocation());
+//        account.setBio(profile.getBio());
+//        account.setProfileImage(profile.getProfileImage());
 
         /*
         이슈
@@ -137,5 +151,57 @@ public class AccountService implements UserDetailsService {
            다시 merge해서 영속성 컨텍스트에 병합시키기위해선, JPA에서 repository.save 메소드를 호출하면, 내부적으로 merge가 수행되어, 'detached' 상태의 객체가 영속성 컨텍스트에 병합된다.
          */
         accountRepository.save(account);
+    }
+
+    /** updatePassword
+     목적 : 비밀번호 수정
+     설명 : 새 비밀번호 encode 후에 저장
+     비고 :
+     **/
+    public void updatePassword(Account account, String newPassword){
+        account.setPassword(passwordEncoder.encode(newPassword));
+        accountRepository.save(account); //merge해서 영속성 컨텍스트에 병합
+    }
+
+    /** updateNotifications
+     목적 : 알람 수정
+     설명 : 알람 업데이트
+     비고 :
+     **/
+    public void updateNotifications(Account account, Notifications notifications) {
+        modelMapper.map(notifications, account);
+//        account.setStudyCreatedByWeb(notifications.isStudyCreatedByWeb());
+//        account.setStudyCreatedByEmail(notifications.isStudyCreatedByEmail());
+//        account.setStudyUpdatedByWeb(notifications.isStudyUpdatedByWeb());
+//        account.setStudyUpdatedByEmail(notifications.isStudyUpdatedByEmail());
+//        account.setStudyEnrollmentResultByEmail(notifications.isStudyEnrollmentResultByEmail());
+//        account.setStudyEnrollmentResultByWeb(notifications.isStudyEnrollmentResultByWeb());
+        accountRepository.save(account);
+    }
+
+    /** updateNickname
+     목적 : 닉네임 수정
+     설명 : 닉네임 업데이트
+     비고 :
+     **/
+    public void updateNickname(Account account, String nickname) {
+        account.setNickname(nickname);
+        accountRepository.save(account);
+        login(account); //로그인을 다시 해줌 -- 다시해줘야 우측 계정 클릭할때 바뀐 닉네임으로 볼수있다.
+    }
+
+    /** sendLoginLink
+     목적 : 패스워드 분실 메일 링크
+     설명 :
+     비고 :
+     **/
+    public void sendLoginLink(Account account) {
+        account.generateEmailCheckToken();
+        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        mailMessage.setTo(account.getEmail());
+        mailMessage.setSubject("스터디올래, 로그인 링크");
+        mailMessage.setText("/login-by-email?token=" + account.getEmailCheckToken() +
+                "&email=" + account.getEmail());
+        javaMailSender.send(mailMessage);
     }
 }

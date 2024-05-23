@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import javax.validation.Valid;
 
@@ -146,4 +147,57 @@ public class AccountController {
         return "account/profile";
     }
 
+    /** emailLoginForm
+     목적 : 이메일로그인 Form
+     설명 : 이메일을 입력할 수 있는 폼을 보여주고, 링크 전송 버튼을 제공한다.
+     호출 : 로그인 페이지에서 "패스워드 없이 로그인하기" 클릭한다.
+     **/
+    @GetMapping("/email-login")
+    public String emailLoginForm() {
+        return "account/email-login";
+    }
+
+    /** sendEmailLoginLink
+     목적 : 패스워드 없이 로그인하기
+     설명 : 입력받은 이메일에 해당하는 계정을 찾아보고, 있는 계정이면 로그인 가능한 링크르르 이메일로 전송한다.
+     설명 : 이메일 전송 후, 안내 메시지를 보여준다.
+     호출 : 가입할때 사용한 이메일을 입력한다.
+     **/
+    @PostMapping("/email-login")
+    public String sendEmailLoginLink(String email, Model model, RedirectAttributes attributes) {
+        Account account = accountRepository.findByEmail(email);
+        if (account == null) {
+            model.addAttribute("error", "유효한 이메일 주소가 아닙니다.");
+            return "account/email-login";
+        }
+
+        if (!account.canSendConfirmEmail()) {
+            model.addAttribute("error", "이메일 로그인은 1시간 뒤에 사용할 수 있습니다.");
+            return "account/email-login";
+        }
+
+        accountService.sendLoginLink(account);
+        attributes.addFlashAttribute("message", "이메일 인증 메일을 발송했습니다.");
+        return "redirect:/email-login";
+    }
+
+    /** loginByEmail
+     목적 : 패스워드 수정 인증메일
+     설명 : 토큰과 이메일을 확인한 뒤 해당 계정으로 로그인한다.
+     호출 : 인증메일받은 url 주소를 입력한다.
+     **/
+    @GetMapping("/login-by-email")
+    public String loginByEmail(String token, String email, Model model) {
+        Account account = accountRepository.findByEmail(email);
+        String view = "account/logged-in-by-email";
+        if (account == null || !account.isValidToken(token)) {
+            model.addAttribute("error", "로그인할 수 없습니다.");
+            return view;
+        }
+
+        accountService.login(account);
+        return view;
+    }
+
 }
+

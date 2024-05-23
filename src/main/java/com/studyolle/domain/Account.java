@@ -4,6 +4,7 @@ import lombok.*;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.UUID;
 
 /** Account 사용자 **/
@@ -12,8 +13,7 @@ import java.util.UUID;
 @Builder @AllArgsConstructor @NoArgsConstructor
 public class Account {
 
-    @Id
-    @GeneratedValue
+    @Id @GeneratedValue
     private Long id;
 
     @Column(unique = true)
@@ -37,26 +37,26 @@ public class Account {
     private String url;
 
     private String occupation;
-    
-    private String liveAround;
-    
+
     private String location;
-    
-    @Lob
-    @Basic(fetch = FetchType.EAGER)
+
+    @Lob @Basic(fetch = FetchType.EAGER)
     private String profileImage;
 
     private boolean studyCreatedByEmail;
 
-    private boolean studyCreatedByWeb;
+    private boolean studyCreatedByWeb = true;
 
     private boolean studyEnrollmentResultByEmail;
 
-    private boolean studyEnrollmentResultByWeb;
+    private boolean studyEnrollmentResultByWeb = true;
 
     private boolean studyUpdatedByEmail;
 
-    private boolean studyUpdatedByWeb;
+    private boolean studyUpdatedByWeb = true;
+
+    @ManyToMany
+    private Set<Tag> tags;
 
     public void generateEmailCheckToken() {
 
