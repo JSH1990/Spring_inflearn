@@ -1,6 +1,8 @@
 package com.studyolle.account;
 
 import com.studyolle.domain.Account;
+import com.studyolle.domain.Tag;
+import com.studyolle.account.form.SignUpForm;
 import com.studyolle.settings.form.Notifications;
 import com.studyolle.settings.form.Profile;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.validation.Valid;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /*
 @Transactional을 붙여야하는 이유
@@ -59,14 +63,18 @@ public class AccountService implements UserDetailsService {
      비고 : 비밀번호 암호화
      **/
     private Account saveNewAccount(@Valid SignUpForm signUpForm) {
-        Account account = Account.builder()
-                .email(signUpForm.getEmail())
-                .nickname(signUpForm.getNickname())
-                .password(passwordEncoder.encode(signUpForm.getPassword())) //raw비밀번호 말고 , raw비밀번호 암호화 + salt 적용.
-                .studyCreatedByWeb(true)
-                .studyEnrollmentResultByWeb(true)
-                .studyUpdatedByWeb(true)
-                .build();
+        signUpForm.setPassword(passwordEncoder.encode(signUpForm.getPassword()));
+        Account account = modelMapper.map(signUpForm, Account.class);
+
+//        Account account = Account.builder()
+//                .email(signUpForm.getEmail())
+//                .nickname(signUpForm.getNickname())
+//                .password(passwordEncoder.encode(signUpForm.getPassword())) //raw비밀번호 말고 , raw비밀번호 암호화 + salt 적용.
+//                .studyCreatedByWeb(true)
+//                .studyEnrollmentResultByWeb(true)
+//                .studyUpdatedByWeb(true)
+//                .build();
+        account.generateEmailCheckToken();
         return accountRepository.save(account);
     }
 
@@ -203,5 +211,41 @@ public class AccountService implements UserDetailsService {
         mailMessage.setText("/login-by-email?token=" + account.getEmailCheckToken() +
                 "&email=" + account.getEmail());
         javaMailSender.send(mailMessage);
+    }
+
+    /** addTag
+     목적 : 태그 추가
+     설명 :
+     **/
+    public void addTag(Account account, Tag tag) {
+        Optional<Account> byId = accountRepository.findById(account.getId());
+        byId.ifPresent(a -> a.getTags().add(tag)); //Optional 객체에 값이 존재하는지 확인. 값이 존재하면 true, 존재하지 않으면 false를 반환.
+        //ifPresent(a -> a.getTags().add(tag)): 값이 존재하는 경우에만 a.getTags().add(tag)을 수행.
+
+        /*
+        Q. Optional이란?
+        A. Optional<T>는 null이 올 수 있는 값을 감싸는 Wrapper 클래스로, 참조하더라도 NPE(null point excption)가 발생하지 않도록 도와준다
+           Optional은 메소드의 결과가 null이 될 수 있으며, null에 의해 오류가 발생할 가능성이 매우 높을 때 반환값으로만 사용되어야 한다
+
+        출처: https://mangkyu.tistory.com/70 [MangKyu's Diary:티스토리]
+         */
+    }
+
+    /** getTags
+     목적 : 태그 조회
+     설명 :
+     **/
+    public Set<Tag> getTags(Account account){
+        Optional<Account> byId = accountRepository.findById(account.getId());
+        return byId.orElseThrow().getTags();
+    }
+
+    /** removeTag
+     목적 : 태그 제거
+     설명 :
+     **/
+    public void removeTag(Account account, Tag tag) {
+        Optional<Account> byId = accountRepository.findById(account.getId());
+        byId.ifPresent(a -> a.getTags().remove(tag));
     }
 }

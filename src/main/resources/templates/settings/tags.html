@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments.html :: head"></head>
+<body class="bg-light">
+    <div th:replace="fragments.html :: main-nav"></div>
+    <div class="container">
+        <div class="row mt-5 justify-content-center">
+            <div class="col-2">
+                <div th:replace="fragments.html :: settings-menu(currentMenu='tags')"></div>
+            </div>
+            <div class="col-8">
+                <div class="row">
+                    <h2 class="col-12">관심있는 스터디 주제</h2>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="alert alert-info" role="alert">
+                            참여하고 싶은 스터디 주제를 입력해 주세요. 해당 주제의 스터디가 생기면 알림을 받을 수 있습니다. 태그를 입력하고 콤마(,)
+                            또는 엔터를 입력하세요.
+                        </div>
+                        <!-- 값을 hidden으로 감추고 있다가,
+                        whitelist : JSON.parse(document.querySelector("#whitelist").textContent) 이 코드에서
+                        textContent로 <div></div> 사이에 값 집어넣는다.
+                        -->
+                        <div id="whitelist" th:text="${whitelist}" hidden></div>
+
+                        <!-- Outside-Of-The-Box 태그 입력시 검색어가 아래쪽으로 내려가는것 -->
+                        <!-- 문자열은 List<String> 형태로 들어온다.
+                         tags = List.of("Spring", "Hibernate", "JPA") => 이렇게 들어온 결과를 아래처럼 변환하려고한다.
+                       (Spring, Hibernate, JPA)
+                       그렇게 하기위해선 타임리프를 이용해, tags변수값을 ',' 쉼표로 변환시켜주면된다.
+                        -->
+                        <input id="tags" type="text" name="tags" th:value="${#strings.listJoin(tags, ',')}"
+                               class="tagify-outside" aria-describedby="tagHelp"/>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="/node_modules/@yaireo/tagify/dist/tagify.min.js"></script>
+    <script type="application/javascript" th:inline="javascript">
+        /* tagify의 액션이 발생했을때, 서버로 ajax 요청 */
+        $(function() {
+            var csrfToken = /*[[${_csrf.token}]]*/ null;
+            var csrfHeader = /*[[${_csrf.headerName}]]*/ null;
+            $(document).ajaxSend(function (e, xhr, options) {
+                xhr.setRequestHeader(csrfHeader, csrfToken);
+            });
+        });
+    </script>
+    <script type="application/javascript">
+        $(function () {
+            function tagRequest(url, tagTitle) {
+                $.ajax({
+                    dataType: "json",
+                    autocomplete: {
+                        enabled: true,
+                        rightKey: true,
+                    },
+                    contentType: "application/json; charset=utf-8",
+                    method: "POST", /* post 전송 */
+                    url: "/settings/tags" + url, /* 전송 url주소 */
+                    data: JSON.stringify({'tagTitle': tagTitle}) /* tagTitle의 값(태그 검색어)을 body에 담아 서버쪽으로 보낸다. */
+                }).done(function (data, status) {
+                    console.log("${data} and status is ${status}");
+                });
+            }
+
+            function onAdd(e) { /* onAdd(e) 이벤트가 호출되면, /add라는 url에 e.detail.data.value 데이터를 전송한다. */
+                tagRequest("/add", e.detail.data.value);
+            }
+
+            function onRemove(e) {
+                tagRequest("/remove", e.detail.data.value);
+            }
+
+            var tagInput = document.querySelector("#tags"); //input id="tags"를 가르킴 -22 lines
+
+            var tagify = new Tagify(tagInput, { //tagInput변수가 가르키는 위치(input id="tags"가 있는곳)에 tagify를 실행한다.
+                pattern: /^.{0,20}$/,
+                whitelist : JSON.parse(document.querySelector("#whitelist").textContent),
+                dropdown : {
+                    enabled: 1, // suggest tags after a single character input
+                } // map tags
+            });
+
+            tagify.on("add", onAdd); //add라는 이벤트가 발생하면 onAdd를 호출
+            tagify.on("remove", onRemove);
+
+            // add a class to Tagify's input element
+            tagify.DOM.input.classList.add('form-control');
+            // re-place Tagify's input element outside of the  element (tagify.DOM.scope), just before it
+            tagify.DOM.scope.parentNode.insertBefore(tagify.DOM.input, tagify.DOM.scope);
+        });
+    </script>
+</body>
+</html>

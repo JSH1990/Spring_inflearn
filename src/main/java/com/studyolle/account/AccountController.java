@@ -1,6 +1,8 @@
 package com.studyolle.account;
 
+import com.studyolle.account.validator.SignUpFormValidator;
 import com.studyolle.domain.Account;
+import com.studyolle.account.form.SignUpForm;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
