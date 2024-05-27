@@ -37,8 +37,8 @@ public class AccountController {
 
     /** signUpForm
      목적 : 회원가입 페이지
-     설명 : 회원가입 페이지를 뷰로 보여준다.
-     비고 :
+     설명 : 회원가입 form을 모델에 담아 account/sign-up로 전달.
+     호출 : 가입버튼 클릭
      **/
     @GetMapping("/sign-up")
     public String signUpForm(Model model) {
@@ -68,7 +68,7 @@ public class AccountController {
     /** checkEmailToken
      목적 : 이메일 토큰 확인 여부
      설명 : 임시가입된 회원의 이메일 정보나 메일로 온 토큰의 값이 일치하지 않으면 에러메세지를 보내고, 메일 토큰이 일치하면 자동 로그인한다.
-     비고 : 반환값을 "account/checked-email" 뷰로 이동시킨다.
+     호출 : 이메일 인증 url주소(check-email-token?token=3ae31bc9-ceb0-4557-bc64-68c0cff0c1a0&email=tmdgus21@naver.com)
      **/
     @GetMapping("/check-email-token")
     public String checkEmailToken(String token, String email, Model model) {
@@ -106,11 +106,11 @@ public class AccountController {
 
     /** checkEmail
      목적 : 이메일 체크 화면
-     설명 : 회원가입 후, "스터디올레 가입을 완료하려면 계정 인증 이메일을 확인하세요." 클릭하면 나오는 화면
-     비고 : 현재 입력한 email를 담아 뷰로 보낸다.
+     설명 : 현재 입력한 email를 담아 뷰로 보낸다.
+     호출 : 회원가입 후, "스터디올레 가입을 완료하려면 계정 인증 이메일을 확인하세요." 클릭하면 나오는 화면
      **/
     @GetMapping("/check-email")
-    public String checkEmail(@CurrentUser Account account, Model model) {
+    public String checkEmail(@CurrentAccount Account account, Model model) {
         model.addAttribute("email", account.getEmail()); //회원가입시 입력했던 정보들을 model 객체에 담는다.
         return "account/check-email";
     }
@@ -118,10 +118,10 @@ public class AccountController {
     /** resendConfirmEmail
      목적 : 이메일 체크 재전송
      설명 : 인증 이메일이 1시간 이내이면 재전송 불가
-     비고 : 
+     호출 : 인증 이메일 다시 보내기 클릭하면 호출됨
      **/
     @GetMapping("/resend-confirm-email")
-    public String resendConfirmEmail(@CurrentUser Account account, Model model) {
+    public String resendConfirmEmail(@CurrentAccount Account account, Model model) {
         if (!account.canSendConfirmEmail()) { //보낸 이메일이 1시간이 경과되지 않다면, error 메세지
             model.addAttribute("error", "인증 이메일은 1시간에 한번만 전송할 수 있습니다.");
             model.addAttribute("email", account.getEmail());
@@ -135,10 +135,10 @@ public class AccountController {
     /** viewProfile
      목적 : 프로필 관리
      설명 : 닉네임 조회를 통해, 프로필 사용자가 맞는지 체크
-     비고 : 
+     호출 : 프로필 버튼 클릭
      **/
     @GetMapping("/profile/{nickname}")
-    public String viewProfile(@PathVariable String nickname, Model model, @CurrentUser Account account) {
+    public String viewProfile(@PathVariable String nickname, Model model, Account account) {
         Account byNickname = accountRepository.findByNickname(nickname);
         if(nickname == null){
             throw new IllegalArgumentException(nickname + "에 해당하는 사용자가 없습니다."); //예외를 던짐
@@ -184,9 +184,9 @@ public class AccountController {
     }
 
     /** loginByEmail
-     목적 : 패스워드 수정 인증메일
-     설명 : 토큰과 이메일을 확인한 뒤 해당 계정으로 로그인한다.
-     호출 : 인증메일받은 url 주소를 입력한다.
+     목적 : 이메일 로그인
+     설명 : "account/logged-in-by-email"로 이동한다.
+     호출 : 로그인에서 이메일을 입력해서 로그인하면 호출
      **/
     @GetMapping("/login-by-email")
     public String loginByEmail(String token, String email, Model model) {

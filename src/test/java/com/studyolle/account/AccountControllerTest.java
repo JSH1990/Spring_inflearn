@@ -1,6 +1,8 @@
 package com.studyolle.account;
 
 import com.studyolle.domain.Account;
+import com.studyolle.mail.EmailMessage;
+import com.studyolle.mail.EmailService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,13 +37,13 @@ class AccountControllerTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private AccountController accountController;
-
-    @Autowired
     private AccountRepository accountRepository;
 
-    @MockBean //이메일 보냈는지 확인하기 위해서 MockBean 생성
-    JavaMailSender javaMailSender;
+//    @MockBean //이메일 보냈는지 확인하기 위해서 MockBean 생성
+//    JavaMailSender javaMailSender;
+
+    @MockBean
+    EmailService emailService;
 
     @DisplayName("인증 메일 확인 - 입력값 오류")
     @Test
@@ -50,6 +52,7 @@ class AccountControllerTest {
                 .param("token", "qeqweqwe")
                 .param("email","email@email.com"))
                 .andExpect(status().isOk())
+                .andExpect(model().attributeExists("error"))
                 .andExpect(view().name("account/checked-email"))
                 .andExpect(unauthenticated()); //인증이 된 사용자인지 아닌지 확인할수있다.
     }
@@ -106,7 +109,7 @@ class AccountControllerTest {
         mockMvc.perform(post("/sign-up")
                         .param("nickname", "sadasd")
                         .param("email","email@email.com")
-                        .param("password","12222342")
+                        .param("password","12345678")
                         .with(csrf())) //이 코드를 넣어주지않으면 테스트 실패한다. 그 이유는 SecurityConfig에서 접근을 허용해도 클라이언트에서 csrf토큰이 들어오지않으면, 데이터가 전송되지 않는다.
                 .andExpect(status().is3xxRedirection()) //HTTP 응답 상태 코드가 3xx 범위 내에 있는지(즉, 리다이렉션 상태인지) 확인한다.
                 .andExpect(view().name("redirect:/"))
@@ -116,7 +119,7 @@ class AccountControllerTest {
         assertNotNull(account); //이메일 중복 아니면
         assertNotEquals(account.getPassword(), "12222342"); //"암호화된 비밀번호" 와 "raw비밀번호" 가 동일한지 테스트
         assertNotNull(account.getEmailCheckToken()); //이메일전송 토큰 있는지 확인
-        then(javaMailSender).should().send(any(SimpleMailMessage.class)); //아무 객체를 사용해 메일을 전송하고 확인한다.
+        then(emailService).should().sendEmail(any(EmailMessage.class)); //아무 객체를 사용해 메일을 전송하고 확인한다.
     }
 
 

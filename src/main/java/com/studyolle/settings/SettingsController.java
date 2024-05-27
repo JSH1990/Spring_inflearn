@@ -3,7 +3,7 @@ package com.studyolle.settings;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.studyolle.account.AccountService;
-import com.studyolle.account.CurrentUser;
+import com.studyolle.account.CurrentAccount;
 import com.studyolle.domain.Account;
 import com.studyolle.domain.Tag;
 import com.studyolle.domain.Zone;
@@ -11,6 +11,7 @@ import com.studyolle.settings.form.*;
 import com.studyolle.settings.validator.NicknameValidator;
 import com.studyolle.settings.validator.PasswordFormValidator;
 import com.studyolle.tag.TagRepository;
+import com.studyolle.zone.ZoneRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.ResponseEntity;
@@ -26,31 +27,30 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.studyolle.settings.SettingsController.ROOT;
+import static com.studyolle.settings.SettingsController.SETTINGS;
+
 @Controller
+@RequestMapping(ROOT + SETTINGS)
 @RequiredArgsConstructor
 /** SettingsController 프로필 설정 **/
 public class SettingsController {
 
-    /* 프로필 */
-    static final String SETTINGS_PROFILE_VIEW_NAME = "settings/profile";
-    static final String SETTINGS_PROFILE_URL = "/" + SETTINGS_PROFILE_VIEW_NAME;
-    /* 패스워드 */
-    static final String SETTINGS_PASSWORD_VIEW_NAME = "settings/password";
-    static final String SETTINGS_PASSWORD_URL = "/" + SETTINGS_PASSWORD_VIEW_NAME;
-    /* 알림 */
-    static final String SETTINGS_NOTIFICATIONS_VIEW_NAME = "settings/notifications";
-    static final String SETTINGS_NOTIFICATIONS_URL = "/" + SETTINGS_NOTIFICATIONS_VIEW_NAME;
-    /* 계정 */
-    static final String SETTINGS_ACCOUNT_VIEW_NAME = "settings/account";
-    static final String SETTINGS_ACCOUNT_URL = "/" + SETTINGS_ACCOUNT_VIEW_NAME;
-    /* 태그 */
-    static final String SETTINGS_TAGS_VIEW_NAME = "settings/tags";
-    static final String SETTINGS_TAGS_URL = "/" + SETTINGS_TAGS_VIEW_NAME;
+    static final String ROOT = "/";
+    static final String SETTINGS = "settings";
+    static final String PROFILE = "/profile";
+    static final String PASSWORD = "/password";
+    static final String NOTIFICATIONS = "/notifications";
+    static final String ACCOUNT = "/account";
+    static final String TAGS = "/tags";
+    static final String ZONES = "/zones";
 
     private final AccountService accountService;
     private final ModelMapper modelMapper;
     private final NicknameValidator nicknameValidator;
     private final TagRepository tagRepository;
+    private final ZoneRepository zoneRepository;
+
     /*
     Q. ObjectMapper?
     A. JSON 형식을 사용할 때, 응답들을 직렬화하고 요청들을 역직렬화 할 때 사용하는 기술이다.
@@ -78,16 +78,16 @@ public class SettingsController {
         webDataBinder.addValidators(nicknameValidator);
     }
 
-    /** profileUpdateForm
+    /** updateProfileForm
      목적 : 프로필 설정 폼
      설명 : 현재 접속해 있는 @CurrentUser account객체와 프로필 설정 new Profile(account) 객체를 model에 담아 뷰로 보낸다.
      비고 :
      **/
-    @GetMapping(SETTINGS_PROFILE_URL)
-    public String profileUpdateForm(@CurrentUser Account account, Model model) {
+    @GetMapping(PROFILE)
+    public String updateProfileForm(@CurrentAccount Account account, Model model) {
         model.addAttribute(account);
         model.addAttribute(modelMapper.map(account, Profile.class));
-        return SETTINGS_PROFILE_VIEW_NAME;
+        return SETTINGS + PROFILE;
     }
 
     /** updateProfile
@@ -95,17 +95,17 @@ public class SettingsController {
      설명 : 프로필을 수정하고, "프로필을 수정했습니다." 메세지 표시
      비고 :
      **/
-    @PostMapping(SETTINGS_PROFILE_URL)
-    public String updateProfile(@CurrentUser Account account, @Valid Profile profile, Errors errors,
+    @PostMapping(PROFILE)
+    public String updateProfile(@CurrentAccount Account account, @Valid Profile profile, Errors errors,
                                 Model model, RedirectAttributes attributes) {
         if (errors.hasErrors()) {
             model.addAttribute(account);
-            return SETTINGS_PROFILE_VIEW_NAME;
+            return SETTINGS + PROFILE;
         }
 
         accountService.updateProfile(account, profile); //profile클래스에 빈생성자 만들지않으면 null 값찍힌다.
         attributes.addFlashAttribute("message", "프로필을 수정했습니다."); //addFlashAttribute한번쓰고 사라진다.
-        return "redirect:" + SETTINGS_PROFILE_URL;
+        return "redirect:/" + SETTINGS + PROFILE;
     }
 
     /** updatePasswordForm
@@ -113,11 +113,11 @@ public class SettingsController {
      설명 : 비밀번호 변경
      비고 :
      **/
-    @GetMapping(SETTINGS_PASSWORD_URL)
-    public String updatePasswordForm(@CurrentUser Account account, Model model) {
+    @GetMapping(PASSWORD)
+    public String updatePasswordForm(@CurrentAccount Account account, Model model) {
         model.addAttribute(account);
         model.addAttribute(new PasswordForm()); //Profile.class인스턴스가 만들어지고, account정보로 채워진다.
-        return SETTINGS_PASSWORD_VIEW_NAME;
+        return SETTINGS + PASSWORD;
     }
 
     /** updatePassword
@@ -125,17 +125,17 @@ public class SettingsController {
      설명 : 비밀번호 변경하고, "패스워드를 변경했습니다." 메세지 표시
      비고 :
      **/
-    @PostMapping(SETTINGS_PASSWORD_URL)
-    public String updatePassword(@CurrentUser Account account, @Valid PasswordForm passwordForm, Errors errors,
+    @PostMapping(PASSWORD)
+    public String updatePassword(@CurrentAccount Account account, @Valid PasswordForm passwordForm, Errors errors,
                                  Model model, RedirectAttributes attributes) {
         if(errors.hasErrors()) {
             model.addAttribute(account);
-            return SETTINGS_PASSWORD_VIEW_NAME;
+            return SETTINGS + PASSWORD;
         }
 
         accountService.updatePassword(account, passwordForm.getNewPassword());
         attributes.addFlashAttribute("message", "패스워드를 변경했습니다.");
-        return "redirect:" + SETTINGS_PASSWORD_URL;
+        return "redirect:/" + SETTINGS + PASSWORD;
     }
 
     /** updateNotificationsForm
@@ -143,11 +143,11 @@ public class SettingsController {
      설명 : 알람 변경
      비고 :
      **/
-    @GetMapping(SETTINGS_NOTIFICATIONS_URL)
-    public String updateNotificationsForm(@CurrentUser Account account, Model model) {
+    @GetMapping(NOTIFICATIONS)
+    public String updateNotificationsForm(@CurrentAccount Account account, Model model) {
         model.addAttribute(account);
         model.addAttribute(modelMapper.map(account, Notifications.class));
-        return SETTINGS_NOTIFICATIONS_VIEW_NAME;
+        return SETTINGS + NOTIFICATIONS;
     }
 
     /** updateNotifications
@@ -155,17 +155,17 @@ public class SettingsController {
      설명 : 알람 변경하고, "알림 설정을 변경했습니다." 메세지 표시
      비고 :
      **/
-    @PostMapping(SETTINGS_NOTIFICATIONS_URL)
-    public String updateNotifications(@CurrentUser Account account, @Valid Notifications notifications, Errors errors,
+    @PostMapping(NOTIFICATIONS)
+    public String updateNotifications(@CurrentAccount Account account, @Valid Notifications notifications, Errors errors,
                                       Model model, RedirectAttributes attributes) {
         if (errors.hasErrors()) {
             model.addAttribute(account);
-            return SETTINGS_NOTIFICATIONS_VIEW_NAME;
+            return SETTINGS + NOTIFICATIONS;
         }
 
         accountService.updateNotifications(account, notifications);
         attributes.addFlashAttribute("message", "알림 설정을 변경했습니다.");
-        return "redirect:" + SETTINGS_NOTIFICATIONS_URL;
+        return "redirect:/" + SETTINGS + NOTIFICATIONS;
     }
 
     /** updateAccountForm
@@ -173,11 +173,11 @@ public class SettingsController {
      설명 : 닉네임 업데이트
      비고 :
      **/
-    @GetMapping(SETTINGS_ACCOUNT_URL)
-    public String updateAccountForm(@CurrentUser Account account, Model model) {
+    @GetMapping(ACCOUNT)
+    public String updateAccountForm(@CurrentAccount Account account, Model model) {
         model.addAttribute(account);
         model.addAttribute(modelMapper.map(account, NicknameForm.class));
-        return SETTINGS_ACCOUNT_VIEW_NAME;
+        return SETTINGS + ACCOUNT;
     }
 
     /** updateAccount
@@ -185,17 +185,17 @@ public class SettingsController {
      설명 : 닉네임 변경하고, "닉네임을 수정했습니다." 메세지 표시
      비고 :
      **/
-    @PostMapping(SETTINGS_ACCOUNT_URL)
-    public String updateAccount(@CurrentUser Account account, @Valid NicknameForm nicknameForm, Errors errors,
+    @PostMapping(ACCOUNT)
+    public String updateAccount(@CurrentAccount Account account, @Valid NicknameForm nicknameForm, Errors errors,
                                 Model model, RedirectAttributes attributes) {
         if (errors.hasErrors()) {
             model.addAttribute(account);
-            return SETTINGS_ACCOUNT_VIEW_NAME;
+            return SETTINGS + ACCOUNT;
         }
 
         accountService.updateNickname(account, nicknameForm.getNickname());
         attributes.addFlashAttribute("message", "닉네임을 수정했습니다.");
-        return "redirect:" + SETTINGS_ACCOUNT_URL;
+        return "redirect:/" + SETTINGS + ACCOUNT;
     }
 
     /** updateTags
@@ -203,8 +203,8 @@ public class SettingsController {
      설명 : settings/tags 뷰로 이동
      호출 : 카테고리에서 작성했던 키워드 보여준다.
      **/
-    @GetMapping(SETTINGS_TAGS_URL)
-    public String updateTags(@CurrentUser Account account, Model model) throws JsonProcessingException {
+    @GetMapping(TAGS)
+    public String updateTags(@CurrentAccount Account account, Model model) throws JsonProcessingException {
         model.addAttribute(account);
         Set<Tag> tags = accountService.getTags(account);
         model.addAttribute("tags", tags.stream().map(Tag::getTitle).collect(Collectors.toList())); //문자열 타입의 리스트로 model담아서 보냄
@@ -214,7 +214,7 @@ public class SettingsController {
         List<String> allTags = tagRepository.findAll().stream().map(Tag::getTitle).collect(Collectors.toList());
         model.addAttribute("whitelist", objectMapper.writeValueAsString(allTags));
 
-        return SETTINGS_TAGS_VIEW_NAME;
+        return SETTINGS + TAGS;
     }
 
     /** addTag
@@ -222,9 +222,9 @@ public class SettingsController {
      설명 : "/settings/tags/add"가 아닌 /settings/tags에서 add호출이 따로감
      호출 : 프로필 수정에서 관심주제 키워드 작성시
      **/
-    @PostMapping("/settings/tags/add")
+    @PostMapping(TAGS + "/add")
     @ResponseBody
-    public ResponseEntity addTag(@CurrentUser Account account, @RequestBody TagForm tagForm) { //ajax에서 요청 body로 post전송하기때문에 @RequestBody 애노테이션붙인다.
+    public ResponseEntity addTag(@CurrentAccount Account account, @RequestBody TagForm tagForm) { //ajax에서 요청 body로 post전송하기때문에 @RequestBody 애노테이션붙인다.
         /*
         호출 과정
 
@@ -271,9 +271,9 @@ public class SettingsController {
      설명 : "/settings/tags/add"가 아닌 /settings/tags에서 remove호출이 따로감
      호출 : 프로필 수정에서 관심주제 키워드 삭제시
      **/
-    @PostMapping(SETTINGS_TAGS_URL + "/remove")
+    @PostMapping(TAGS + "/remove")
     @ResponseBody
-    public ResponseEntity removeTag(@CurrentUser Account account, @RequestBody TagForm tagForm) {
+    public ResponseEntity removeTag(@CurrentAccount Account account, @RequestBody TagForm tagForm) {
         String title = tagForm.getTagTitle();
         Tag tag = tagRepository.findByTitle(title);
         if (tag == null) {

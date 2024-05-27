@@ -10,10 +10,20 @@ import org.springframework.validation.Validator;
 /** SignUpFormValidator 회원가입 유효성 검사 **/
 @Component
 @RequiredArgsConstructor
+/*
+    Q. @RequiredArgsConstructor?
+
+    A. 롬복(Lombok) 라이브러리에서 제공하는 애노테이션 중 하나로, 클래스의 모든 final 필드와 @NonNull이 붙은 필드들을 인자로 받는 생성자를 자동으로 생성
+ */
 public class SignUpFormValidator implements Validator {
 
     private final AccountRepository accountRepository;
 
+    /** supports
+     목적 : 회원가입 유효성 검사 할 클래스 선택
+     설명 :  Validator가 특정 클래스의 인스턴스를 지원하는지 여부를 확인
+     비고 :
+     **/
     @Override
     public boolean supports(Class<?> aClazz) {
         return aClazz.isAssignableFrom(SignUpForm.class);

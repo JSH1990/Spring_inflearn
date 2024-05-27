@@ -1,14 +1,20 @@
 package com.studyolle.account;
 
+import com.studyolle.config.AppProperties;
 import com.studyolle.domain.Account;
 import com.studyolle.domain.Tag;
 import com.studyolle.account.form.SignUpForm;
+import com.studyolle.domain.Zone;
+import com.studyolle.mail.EmailMessage;
+import com.studyolle.mail.EmailService;
 import com.studyolle.settings.form.Notifications;
 import com.studyolle.settings.form.Profile;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,7 +24,11 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
 
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
 import javax.validation.Valid;
 import java.util.List;
 import java.util.Optional;
@@ -34,15 +44,18 @@ processNewAccount메서드는 가입이 된 회원의 이메일 토큰을 생성
 
 /** AccountService 사용자 서비스 **/
 @Service
+@Slf4j
 @Transactional
 @RequiredArgsConstructor
 public class AccountService implements UserDetailsService {
     //컨트롤러의 코드를 서비스에 넣고, 다시 한번 테스트 돌려 잘되는지 확인해야한다.
 
     private final AccountRepository accountRepository;
-    private final JavaMailSender javaMailSender;
+    private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final ModelMapper modelMapper;
+    private final TemplateEngine templateEngine; //템플릿 엔진의 핵심 구성 요소로, 템플릿 파일을 처리하고 렌더링하는 역할을 한다.
+    private final AppProperties appProperties; //context.setVariable("host", appProperties.getHost()); 사용하기 위해서
 
     /** processNewAccount
      목적 : 가입 확인 이메일 전송
@@ -65,31 +78,32 @@ public class AccountService implements UserDetailsService {
     private Account saveNewAccount(@Valid SignUpForm signUpForm) {
         signUpForm.setPassword(passwordEncoder.encode(signUpForm.getPassword()));
         Account account = modelMapper.map(signUpForm, Account.class);
-
-//        Account account = Account.builder()
-//                .email(signUpForm.getEmail())
-//                .nickname(signUpForm.getNickname())
-//                .password(passwordEncoder.encode(signUpForm.getPassword())) //raw비밀번호 말고 , raw비밀번호 암호화 + salt 적용.
-//                .studyCreatedByWeb(true)
-//                .studyEnrollmentResultByWeb(true)
-//                .studyUpdatedByWeb(true)
-//                .build();
         account.generateEmailCheckToken();
         return accountRepository.save(account);
     }
 
     /** sendSignUpConfirmEmail
-     목적 : 메일 인증 커스텀
-     설명 :
-     비고 :
+     목적 : 인증 메일 커스텀
+     설명 : 인증 메일 형식을 타임리프로 뷰 페이지를 통해 html로 구현
+     비고 : TemplateEngine, AppProperties 클래스 사용
      **/
     public void sendSignUpConfirmEmail(Account newAccount) {
-        SimpleMailMessage mailMessage = new SimpleMailMessage();
-        mailMessage.setTo(newAccount.getEmail());
-        mailMessage.setSubject("스터디올래, 회원 가입 인증"); //메일 제목
-        mailMessage.setText("/check-email-token?token=" + newAccount.getEmailCheckToken() +
-                "&email=" + newAccount.getEmail()); //메일 본문
-        javaMailSender.send(mailMessage); //메일 전송
+        Context context = new Context(); //Map 클래스와 같다고 생각하면 된다. (templateEngine)
+        context.setVariable("link", "/check-email-token?token=" + newAccount.getEmailCheckToken() +
+                "&email=" + newAccount.getEmail());
+        context.setVariable("nickname", newAccount.getNickname());
+        context.setVariable("linkName", "이메일 인증하기");
+        context.setVariable("message", "스터디올래 서비스를 사용하려면 링크를 클릭하세요.");
+        context.setVariable("host", appProperties.getHost()); //app.host=http://localhost:8080 (application.properties파일에 정의)
+        String message = templateEngine.process("mail/simple-link", context);
+
+        EmailMessage emailMessage = EmailMessage.builder()
+                .to(newAccount.getEmail())
+                .subject("스터디올래, 회원 가입 인증")
+                .message(message)
+                .build();
+
+        emailService.sendEmail(emailMessage);
     }
 
     /** loadUserByUsername
@@ -200,17 +214,25 @@ public class AccountService implements UserDetailsService {
 
     /** sendLoginLink
      목적 : 패스워드 분실 메일 링크
-     설명 :
-     비고 :
+     설명 : 인증 메일 형식을 타임리프로 뷰 페이지를 통해 html로 구현
+     비고 : TemplateEngine, AppProperties 클래스 사용
      **/
     public void sendLoginLink(Account account) {
-        account.generateEmailCheckToken();
-        SimpleMailMessage mailMessage = new SimpleMailMessage();
-        mailMessage.setTo(account.getEmail());
-        mailMessage.setSubject("스터디올래, 로그인 링크");
-        mailMessage.setText("/login-by-email?token=" + account.getEmailCheckToken() +
+        Context context = new Context();
+        context.setVariable("link", "/login-by-email?token=" + account.getEmailCheckToken() +
                 "&email=" + account.getEmail());
-        javaMailSender.send(mailMessage);
+        context.setVariable("nickname", account.getNickname());
+        context.setVariable("linkName", "스터디올래 로그인하기");
+        context.setVariable("message", "로그인 하려면 아래 링크를 클릭하세요.");
+        context.setVariable("host", appProperties.getHost());
+        String message = templateEngine.process("mail/simple-link", context);
+
+        EmailMessage emailMessage = EmailMessage.builder()
+                .to(account.getEmail())
+                .subject("스터디올래, 로그인 링크")
+                .message(message)
+                .build();
+        emailService.sendEmail(emailMessage);
     }
 
     /** addTag
@@ -247,5 +269,32 @@ public class AccountService implements UserDetailsService {
     public void removeTag(Account account, Tag tag) {
         Optional<Account> byId = accountRepository.findById(account.getId());
         byId.ifPresent(a -> a.getTags().remove(tag));
+    }
+
+    /** getZones
+     목적 : 지역 조회
+     설명 :
+     **/
+    public Set<Zone> getZones(Account account) {
+        Optional<Account> byId = accountRepository.findById(account.getId());
+        return byId.orElseThrow().getZones();
+    }
+
+    /** addZone
+     목적 : 지역 추가
+     설명 :
+     **/
+    public void addZone(Account account, Zone zone) {
+        Optional<Account> byId = accountRepository.findById(account.getId());
+        byId.ifPresent(a -> a.getZones().add(zone));
+    }
+
+    /** removeZone
+     목적 : 지역 제거
+     설명 :
+     **/
+    public void removeZone(Account account, Zone zone) {
+        Optional<Account> byId = accountRepository.findById(account.getId());
+        byId.ifPresent(a -> a.getZones().remove(zone));
     }
 }
