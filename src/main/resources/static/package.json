@@ -15,6 +15,10 @@
     "font-awesome": "^4.7.0",
     "jdenticon": "^2.2.0",
     "jquery": "^3.4.1",
-    "jquery-cropper": "^1.0.1"
+    "jquery-cropper": "^1.0.1",
+    "summernote": "^0.8.20"
+  },
+  "devDependencies": {
+    "husky": "^9.0.11"
   }
 }
